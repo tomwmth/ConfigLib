@@ -6,8 +6,8 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 
     withJavadocJar()
     withSourcesJar()
@@ -19,7 +19,6 @@ tasks.getByName<Test>("test") {
 
 repositories {
     mavenCentral()
-    maven(url = "https://papermc.io/repo/repository/maven-public/")
 }
 
 dependencies {
@@ -35,23 +34,23 @@ dependencies {
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/Exlll/ConfigLib")
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
-
     val moduleId = project.name.split("-")[1].lowercase()
     val publicationName = moduleId.replaceFirstChar(Char::titlecase)
 
     publications {
         register<MavenPublication>(publicationName) {
             from(components["java"])
+        }
+    }
+
+    repositories {
+        maven {
+            name = "alpine-cloud"
+            url = uri("https://lib.alpn.cloud/alpine-public")
+            credentials {
+                username = System.getenv("ALPINE_MAVEN_NAME")
+                password = System.getenv("ALPINE_MAVEN_SECRET")
+            }
         }
     }
 }

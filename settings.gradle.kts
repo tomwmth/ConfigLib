@@ -1,4 +1,4 @@
-rootProject.name = "configlib"
+rootProject.name = "ConfigLib"
 include("configlib-core")
 include("configlib-yaml")
 include("configlib-paper")
