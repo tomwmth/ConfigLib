@@ -16,31 +16,6 @@ import java.lang.annotation.Target;
  * serialization. The type information can be customized using the {@link PolymorphicTypes}
  * annotation.
  *
- * <pre>
- * {@code
- * // Example 1
- * @Polymorphic
- * @Configuration
- * static abstract class A { ... }
- *
- * static final class Impl1 extends A { ... }
- * static final class Impl2 extends A { ... }
- *
- * List<A> as = List.of(new Impl1(...), new Impl2(...), ...);
- *
- * // Example 2
- * @Polymorphic
- * interface B { ... }
- *
- * record Impl1() implements B { ... }
- *
- * @Configuration
- * static final class Impl2 implements B { ... }
- *
- * List<B> bs = List.of(new Impl1(...), new Impl2(...), ...);
- * }
- * </pre>
- *
  * @see PolymorphicTypes
  */
 @Target(ElementType.TYPE)

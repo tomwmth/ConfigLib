@@ -9,23 +9,6 @@ import java.lang.annotation.Target;
  * Indicates the subtypes of {@code Polymorphic} types. This annotation can be used to provide type
  * aliases for subtypes which are then used instead of Java class names.
  *
- * <pre>
- * {@code
- * @Polymorphic
- * @PolymorphicTypes( {
- *         @PolymorphicTypes.Type(type = Impl1.class, alias = "IMPL_1"),
- *         @PolymorphicTypes.Type(type = Impl2.class, alias = "IMPL_2")
- * })
- *
- * interface A { ... }
- *
- * record Impl1(...) implements A { ... }
- * record Impl2(...) implements A { ... }
- *
- * List<A> as = List.of(new Impl1(...), new Impl2(...), ...);
- * }
- * </pre>
- *
  * @see Polymorphic
  */
 @Target(ElementType.TYPE)

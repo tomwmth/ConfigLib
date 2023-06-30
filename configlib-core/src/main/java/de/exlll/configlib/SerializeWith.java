@@ -18,44 +18,10 @@ import java.lang.annotation.Target;
  * <p>
  * The following examples show how {@code nesting} can be used to apply the serializer to
  * configuration elements at different levels.
- *
- * <pre>
- * {@code
- * // MyListSerializer is applied to 'list'
- * @SerializeWith(serializer = MyListSerializer.class)
- * List<Set<String>> list;
- *
- * // MySetSerializer is applied to the Set<String> elements of 'list'
- * @SerializeWith(serializer = MySetSerializer.class, nesting = 1)
- * List<Set<String>> list;
- *
- * // MyStringSerializer is applied to the strings within the set elements of 'list'
- * @SerializeWith(serializer = MyStringSerializer.class, nesting = 2)
- * List<Set<String>> list;
- *
- * // MyMap0Serializer is applied to 'map'
- * @SerializeWith(serializer = MyMap0Serializer.class)
- * Map<Integer, Map<String, Double>> map;
- *
- * // MyMap1Serializer is applied to the Map<String, Double> values of 'map'
- * @SerializeWith(serializer = MyMap1Serializer.class, nesting = 1)
- * Map<Integer, Map<String, Double>> map;
- *
- * // MyDoubleSerializer is applied to the doubles within the nested values of 'map'
- * @SerializeWith(serializer = MyDoubleSerializer.class, nesting = 2)
- * Map<Integer, Map<String, Double>> map;
- * }
- * </pre>
  * <p>
  * If instead the annotation is applied to a non-generic type, then, whenever that exact
  * type (i.e. not a subtype or implementation) is encountered, the referenced serializer
  * is selected.
- * <pre>
- * {@code
- * @SerializeWith(serializer = MyClassSerializer.class)
- * public final class MyClass { ... }
- * }
- * </pre>
  * <p>
  * Similarly, this annotation can be used as a meta-annotation on other {@code ElementType.TYPE}
  * annotations. In these cases, the serializer is selected whenever a type annotated with
