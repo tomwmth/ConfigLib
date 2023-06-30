@@ -4,4 +4,4 @@ website: https://github.com/Exlll/ConfigLib
 description: A library for working with YAML configurations.
 author: Exlll
 main: de.exlll.configlib.ConfigLib
-api-version: 1.19
+api-version: 1.13

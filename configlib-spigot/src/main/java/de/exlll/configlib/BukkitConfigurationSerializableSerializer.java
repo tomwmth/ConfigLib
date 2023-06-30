@@ -26,6 +26,6 @@ final class BukkitConfigurationSerializableSerializer
 
     @Override
     public ConfigurationSerializable deserialize(String element) {
-        return yaml.load(element);
+        return (ConfigurationSerializable) yaml.load(element);
     }
 }
