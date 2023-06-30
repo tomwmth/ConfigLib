@@ -3,6 +3,7 @@ package de.exlll.configlib;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 enum FieldExtractors implements FieldExtractor {
@@ -22,7 +23,7 @@ enum FieldExtractors implements FieldExtractor {
             List<Field> fields = classes.stream()
                     .flatMap(c -> Arrays.stream(c.getDeclaredFields()))
                     .filter(FieldFilters.DEFAULT)
-                    .toList();
+                    .collect(Collectors.toList());
             requireNoShadowing(fields);
             return fields.stream();
         }
@@ -32,8 +33,8 @@ enum FieldExtractors implements FieldExtractor {
         Map<String, Class<?>> map = new LinkedHashMap<>();
 
         for (Field field : fields) {
-            var fieldName = field.getName();
-            var fieldClass = field.getDeclaringClass();
+            String fieldName = field.getName();
+            Class<?> fieldClass = field.getDeclaringClass();
 
             if (map.containsKey(fieldName)) {
                 Class<?> superClass = map.get(fieldName);

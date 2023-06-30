@@ -1,10 +1,10 @@
 package de.exlll.configlib;
 
 import de.exlll.configlib.ConfigurationElements.FieldElement;
-import de.exlll.configlib.ConfigurationElements.RecordComponentElement;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static de.exlll.configlib.Validator.requireConfigurationType;
 import static de.exlll.configlib.Validator.requireNonNull;
@@ -20,10 +20,23 @@ final class CommentNodeExtractor {
         this.outputNull = properties.outputNulls();
     }
 
-    private record State(
-            Iterator<? extends ConfigurationElement<?>> iterator,
-            Object elementHolder
-    ) {}
+    private static class State {
+        private final Iterator<? extends ConfigurationElement<?>> iterator;
+        private final Object elementHolder;
+
+        public State(Iterator<? extends ConfigurationElement<?>> iterator, Object elementHolder) {
+            this.iterator = iterator;
+            this.elementHolder = elementHolder;
+        }
+
+        public Iterator<? extends ConfigurationElement<?>> iterator() {
+            return this.iterator;
+        }
+
+        public Object elementHolder() {
+            return this.elementHolder;
+        }
+    }
 
     /**
      * Extracts {@code CommentNode}s of the given configuration type in a DFS manner.
@@ -37,8 +50,8 @@ final class CommentNodeExtractor {
     public Queue<CommentNode> extractCommentNodes(final Object elementHolder) {
         requireConfigurationType(elementHolder.getClass());
         final Queue<CommentNode> result = new ArrayDeque<>();
-        final var elementNameStack = new ArrayDeque<>(List.of(""));
-        final var stateStack = new ArrayDeque<>(List.of(stateFromObject(elementHolder)));
+        final ArrayDeque<String> elementNameStack = new ArrayDeque<>(Collections.singletonList(""));
+        final ArrayDeque<State> stateStack = new ArrayDeque<>(Collections.singletonList(stateFromObject(elementHolder)));
 
         State state;
         while (!stateStack.isEmpty()) {
@@ -46,21 +59,21 @@ final class CommentNodeExtractor {
             elementNameStack.removeLast();
 
             while (state.iterator.hasNext()) {
-                final var element = state.iterator.next();
-                final var elementValue = element.value(state.elementHolder);
+                final ConfigurationElement<?> element = state.iterator.next();
+                final Object elementValue = element.value(state.elementHolder);
 
                 if ((elementValue == null) && !outputNull)
                     continue;
 
-                final var elementName = element.name();
-                final var commentNode = createNodeIfCommentPresent(
+                final String elementName = element.name();
+                final Optional<CommentNode> commentNode = createNodeIfCommentPresent(
                         element.element(),
                         elementName,
                         elementNameStack
                 );
                 commentNode.ifPresent(result::add);
 
-                final var elementType = element.type();
+                final Class<?> elementType = element.type();
                 if ((elementValue != null) && Reflect.isConfigurationType(elementType)) {
                     stateStack.addLast(state);
                     elementNameStack.addLast(nameFormatter.format(elementName));
@@ -73,10 +86,8 @@ final class CommentNodeExtractor {
     }
 
     private State stateFromObject(final Object elementHolder) {
-        final var type = elementHolder.getClass();
-        final var iter = type.isRecord()
-                ? recordComponentElements(elementHolder)
-                : fieldElements(elementHolder);
+        final Class<?> type = elementHolder.getClass();
+        final Iterator<FieldElement> iter = fieldElements(elementHolder);
         return new State(iter, elementHolder);
     }
 
@@ -86,13 +97,13 @@ final class CommentNodeExtractor {
             final Deque<String> elementNameStack
     ) {
         if (element.isAnnotationPresent(Comment.class)) {
-            final var comments = Arrays.stream(element.getAnnotation(Comment.class).value())
+            final List<String> comments = Arrays.stream(element.getAnnotation(Comment.class).value())
                     .flatMap(s -> Arrays.stream(s.split("\n", -1)))
-                    .toList();
-            final var formattedName = nameFormatter.format(elementName);
-            final var elementNames = new ArrayList<>(elementNameStack);
+                    .collect(Collectors.toList());
+            final String formattedName = nameFormatter.format(elementName);
+            final List<String> elementNames = new ArrayList<>(elementNameStack);
             elementNames.add(formattedName);
-            final var result = new CommentNode(comments, elementNames);
+            final CommentNode result = new CommentNode(comments, elementNames);
             return Optional.of(result);
         }
         return Optional.empty();
@@ -105,9 +116,9 @@ final class CommentNodeExtractor {
                 .iterator();
     }
 
-    private Iterator<RecordComponentElement> recordComponentElements(Object record) {
-        return Arrays.stream(record.getClass().getRecordComponents())
-                .map(RecordComponentElement::new)
-                .iterator();
-    }
+//    private Iterator<RecordComponentElement> recordComponentElements(Object record) {
+//        return Arrays.stream(record.getClass().getRecordComponents())
+//                .map(RecordComponentElement::new)
+//                .iterator();
+//    }
 }

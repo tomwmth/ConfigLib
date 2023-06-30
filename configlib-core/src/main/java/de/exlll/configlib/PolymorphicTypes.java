@@ -56,7 +56,7 @@ public @interface PolymorphicTypes {
          * the Java class name ist used.
          *
          * @return alias of the subtype
-         * @see String#isBlank()
+         * @see String#isEmpty()
          */
         String alias() default "";
     }

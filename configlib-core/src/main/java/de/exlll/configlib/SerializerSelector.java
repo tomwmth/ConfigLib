@@ -3,6 +3,7 @@ package de.exlll.configlib;
 import de.exlll.configlib.Serializers.*;
 
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -13,43 +14,48 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static de.exlll.configlib.Validator.requireNonNull;
 
 final class SerializerSelector {
-    private static final Map<Class<?>, Serializer<?, ?>> DEFAULT_SERIALIZERS = Map.ofEntries(
-            Map.entry(boolean.class, new BooleanSerializer()),
-            Map.entry(Boolean.class, new BooleanSerializer()),
-            Map.entry(byte.class, new NumberSerializer(byte.class)),
-            Map.entry(Byte.class, new NumberSerializer(Byte.class)),
-            Map.entry(short.class, new NumberSerializer(short.class)),
-            Map.entry(Short.class, new NumberSerializer(Short.class)),
-            Map.entry(int.class, new NumberSerializer(int.class)),
-            Map.entry(Integer.class, new NumberSerializer(Integer.class)),
-            Map.entry(long.class, new NumberSerializer(long.class)),
-            Map.entry(Long.class, new NumberSerializer(Long.class)),
-            Map.entry(float.class, new NumberSerializer(float.class)),
-            Map.entry(Float.class, new NumberSerializer(Float.class)),
-            Map.entry(double.class, new NumberSerializer(double.class)),
-            Map.entry(Double.class, new NumberSerializer(Double.class)),
-            Map.entry(char.class, new CharacterSerializer()),
-            Map.entry(Character.class, new CharacterSerializer()),
-            Map.entry(String.class, new StringSerializer()),
-            Map.entry(BigInteger.class, new BigIntegerSerializer()),
-            Map.entry(BigDecimal.class, new BigDecimalSerializer()),
-            Map.entry(LocalDate.class, new LocalDateSerializer()),
-            Map.entry(LocalTime.class, new LocalTimeSerializer()),
-            Map.entry(LocalDateTime.class, new LocalDateTimeSerializer()),
-            Map.entry(Instant.class, new InstantSerializer()),
-            Map.entry(UUID.class, new UuidSerializer()),
-            Map.entry(File.class, new FileSerializer()),
-            Map.entry(Path.class, new PathSerializer()),
-            Map.entry(URL.class, new UrlSerializer()),
-            Map.entry(URI.class, new UriSerializer())
-    );
+    private static final Map<Class<?>, Serializer<?, ?>> DEFAULT_SERIALIZERS = new HashMap<Class<?>, Serializer<?, ?>>() {{
+        put(boolean.class, new BooleanSerializer());
+        put(Boolean.class, new BooleanSerializer());
+        put(byte.class, new NumberSerializer(byte.class));
+        put(Byte.class, new NumberSerializer(Byte.class));
+        put(short.class, new NumberSerializer(short.class));
+        put(Short.class, new NumberSerializer(Short.class));
+        put(int.class, new NumberSerializer(int.class));
+        put(Integer.class, new NumberSerializer(Integer.class));
+        put(long.class, new NumberSerializer(long.class));
+        put(Long.class, new NumberSerializer(Long.class));
+        put(float.class, new NumberSerializer(float.class));
+        put(Float.class, new NumberSerializer(Float.class));
+        put(double.class, new NumberSerializer(double.class));
+        put(Double.class, new NumberSerializer(Double.class));
+        put(char.class, new CharacterSerializer());
+        put(Character.class, new CharacterSerializer());
+        put(String.class, new StringSerializer());
+        put(BigInteger.class, new BigIntegerSerializer());
+        put(BigDecimal.class, new BigDecimalSerializer());
+        put(LocalDate.class, new LocalDateSerializer());
+        put(LocalTime.class, new LocalTimeSerializer());
+        put(LocalDateTime.class, new LocalDateTimeSerializer());
+        put(Instant.class, new InstantSerializer());
+        put(UUID.class, new UuidSerializer());
+        put(File.class, new FileSerializer());
+        put(Path.class, new PathSerializer());
+        put(URL.class, new UrlSerializer());
+        put(URI.class, new UriSerializer());
+
+    }};
+
     private final ConfigurationProperties properties;
     /**
      * Holds the last {@link #select}ed configuration element.
@@ -101,18 +107,38 @@ final class SerializerSelector {
     }
 
     private Serializer<?, ?> selectCustomSerializer(AnnotatedType annotatedType) {
-        return findConfigurationElementSerializer(annotatedType)
-                .or(() -> findSerializerFactoryForType(annotatedType))
-                .or(() -> findSerializerForType(annotatedType))
-                .or(() -> findSerializerOnType(annotatedType))
-                .or(() -> findMetaSerializerOnType(annotatedType))
-                .or(() -> findSerializerByCondition(annotatedType))
-                .orElse(null);
+        Optional<Serializer<?, ?>> configurationElementSerializer = findConfigurationElementSerializer(annotatedType);
+        if (configurationElementSerializer.isPresent()) {
+            return configurationElementSerializer.get();
+        }
+
+        Optional<Serializer<?, ?>> serializerFactoryForType = findSerializerFactoryForType(annotatedType);
+        if (serializerFactoryForType.isPresent()) {
+            return serializerFactoryForType.get();
+        }
+
+        Optional<Serializer<?, ?>> serializerForType = findSerializerForType(annotatedType);
+        if (serializerForType.isPresent()) {
+            return serializerForType.get();
+        }
+
+        Optional<Serializer<?, ?>> serializerOnType = findSerializerOnType(annotatedType);
+        if (serializerOnType.isPresent()) {
+            return serializerOnType.get();
+        }
+
+        Optional<Serializer<?, ?>> metaSerializerOnType = findMetaSerializerOnType(annotatedType);
+        if (metaSerializerOnType.isPresent()) {
+            return metaSerializerOnType.get();
+        }
+
+        Optional<Serializer<?, ?>> serializerByCondition = findSerializerByCondition(annotatedType);
+        return serializerByCondition.orElse(null);
     }
 
     private Optional<Serializer<?, ?>> findConfigurationElementSerializer(AnnotatedType annotatedType) {
         // SerializeWith annotation on configuration elements
-        final var annotation = element.annotation(SerializeWith.class);
+        final SerializeWith annotation = element.annotation(SerializeWith.class);
         if ((annotation != null) && (currentNesting == annotation.nesting())) {
             return Optional.of(newSerializerFromAnnotation(annotatedType, annotation));
         }
@@ -121,45 +147,52 @@ final class SerializerSelector {
 
     private Optional<Serializer<?, ?>> findSerializerFactoryForType(AnnotatedType annotatedType) {
         // Serializer factory registered for Type via configurations properties
-        if ((annotatedType.getType() instanceof Class<?> cls) &&
-            properties.getSerializerFactories().containsKey(cls)) {
-            final var context = new SerializerContextImpl(properties, element, annotatedType);
-            final var factory = properties.getSerializerFactories().get(cls);
-            final var serializer = factory.apply(context);
-            if (serializer == null) {
-                String msg = "Serializer factories must not return null.";
-                throw new ConfigurationException(msg);
+        if (annotatedType.getType() instanceof Class<?>) {
+            Class<?> cls = (Class<?>) annotatedType.getType();
+            if (properties.getSerializerFactories().containsKey(cls)) {
+                final SerializerContext context = new SerializerContextImpl(properties, element, annotatedType);
+                final Function<? super SerializerContext, ? extends Serializer<?, ?>> factory = properties.getSerializerFactories().get(cls);
+                final Serializer<?, ?> serializer = factory.apply(context);
+                if (serializer == null) {
+                    String msg = "Serializer factories must not return null.";
+                    throw new ConfigurationException(msg);
+                }
+                return Optional.of(serializer);
             }
-            return Optional.of(serializer);
         }
         return Optional.empty();
     }
 
     private Optional<Serializer<?, ?>> findSerializerForType(AnnotatedType annotatedType) {
         // Serializer registered for Type via configurations properties
-        if ((annotatedType.getType() instanceof Class<?> cls) &&
-            properties.getSerializers().containsKey(cls)) {
-            return Optional.of(properties.getSerializers().get(cls));
+        if (annotatedType.getType() instanceof Class<?>) {
+            Class<?> cls = (Class<?>) annotatedType.getType();
+            if (properties.getSerializers().containsKey(cls)) {
+                return Optional.of(properties.getSerializers().get(cls));
+            }
         }
         return Optional.empty();
     }
 
     private Optional<Serializer<?, ?>> findSerializerOnType(AnnotatedType annotatedType) {
         // SerializeWith annotation on type
-        if ((annotatedType.getType() instanceof Class<?> cls) &&
-            (cls.getDeclaredAnnotation(SerializeWith.class) != null)) {
-            final var annotation = cls.getDeclaredAnnotation(SerializeWith.class);
-            return Optional.of(newSerializerFromAnnotation(annotatedType, annotation));
+        if (annotatedType.getType() instanceof Class<?>) {
+            Class<?> cls = (Class<?>) annotatedType.getType();
+            if (cls.getDeclaredAnnotation(SerializeWith.class) != null) {
+                final SerializeWith annotation = cls.getDeclaredAnnotation(SerializeWith.class);
+                return Optional.of(newSerializerFromAnnotation(annotatedType, annotation));
+            }
         }
         return Optional.empty();
     }
 
     private Optional<Serializer<?, ?>> findMetaSerializerOnType(AnnotatedType annotatedType) {
         // SerializeWith meta annotation on type
-        if ((annotatedType.getType() instanceof Class<?> cls)) {
-            for (final var meta : cls.getDeclaredAnnotations()) {
-                final var metaType = meta.annotationType();
-                final var annotation = metaType.getDeclaredAnnotation(SerializeWith.class);
+        if ((annotatedType.getType() instanceof Class<?>)) {
+            Class<?> cls = (Class<?>) annotatedType.getType();
+            for (final Annotation meta : cls.getDeclaredAnnotations()) {
+                final Class<? extends Annotation> metaType = meta.annotationType();
+                final SerializeWith annotation = metaType.getDeclaredAnnotation(SerializeWith.class);
                 if (annotation != null)
                     return Optional.of(newSerializerFromAnnotation(annotatedType, annotation));
             }
@@ -169,7 +202,7 @@ final class SerializerSelector {
 
     private Optional<Serializer<?, ?>> findSerializerByCondition(AnnotatedType annotatedType) {
         // Serializer registered for condition via configurations properties
-        for (var entry : properties.getSerializersByCondition().entrySet()) {
+        for (Map.Entry<Predicate<? super Type>, Serializer<?, ?>> entry : properties.getSerializersByCondition().entrySet()) {
             if (entry.getKey().test(annotatedType.getType()))
                 return Optional.of(entry.getValue());
         }
@@ -180,7 +213,7 @@ final class SerializerSelector {
             AnnotatedType annotatedType,
             SerializeWith annotation
     ) {
-        final var context = new SerializerContextImpl(properties, element, annotatedType);
+        final SerializerContext context = new SerializerContextImpl(properties, element, annotatedType);
         return Serializers.newCustomSerializer(annotation.serializer(), context);
     }
 
@@ -191,7 +224,7 @@ final class SerializerSelector {
         if (Reflect.isEnumType(cls)) {
             // The following cast won't fail because we just checked that it's an enum.
             @SuppressWarnings("unchecked")
-            final var enumType = (Class<? extends Enum<?>>) cls;
+            final Class<? extends Enum<?>> enumType = (Class<? extends Enum<?>>) cls;
             return new Serializers.EnumSerializer(enumType);
         }
         if (Reflect.isArrayType(cls))
@@ -225,35 +258,36 @@ final class SerializerSelector {
         } else if (elementType == double.class) {
             return new PrimitiveDoubleArraySerializer();
         }
-        var elementSerializer = selectForType(annotatedElementType);
-        var inputNulls = properties.inputNulls();
-        var outputNulls = properties.outputNulls();
+        Serializer<?, ?> elementSerializer = selectForType(annotatedElementType);
+        boolean inputNulls = properties.inputNulls();
+        boolean outputNulls = properties.outputNulls();
         return new ArraySerializer<>(elementType, elementSerializer, outputNulls, inputNulls);
     }
 
     private Serializer<?, ?> selectForParameterizedType(AnnotatedParameterizedType annotatedType) {
         // the raw type returned by Java is always a class
-        final var type = (ParameterizedType) annotatedType.getType();
-        final var rawType = (Class<?>) type.getRawType();
-        final var typeArgs = annotatedType.getAnnotatedActualTypeArguments();
-        final var inputNulls = properties.inputNulls();
-        final var outputNulls = properties.outputNulls();
+        final ParameterizedType type = (ParameterizedType) annotatedType.getType();
+        final Class<?> rawType = (Class<?>) type.getRawType();
+        final AnnotatedType[] typeArgs = annotatedType.getAnnotatedActualTypeArguments();
+        final boolean inputNulls = properties.inputNulls();
+        final boolean outputNulls = properties.outputNulls();
 
         if (Reflect.isListType(rawType)) {
-            var elementSerializer = selectForType(typeArgs[0]);
+            Serializer<?, ?> elementSerializer = selectForType(typeArgs[0]);
             return new ListSerializer<>(elementSerializer, outputNulls, inputNulls);
         } else if (Reflect.isSetType(rawType)) {
-            var elementSerializer = selectForType(typeArgs[0]);
+            Serializer<?, ?> elementSerializer = selectForType(typeArgs[0]);
             return properties.serializeSetsAsLists()
                     ? new SetAsListSerializer<>(elementSerializer, outputNulls, inputNulls)
                     : new SetSerializer<>(elementSerializer, outputNulls, inputNulls);
         } else if (Reflect.isMapType(rawType)) {
-            if ((typeArgs[0].getType() instanceof Class<?> cls) &&
-                (DEFAULT_SERIALIZERS.containsKey(cls) ||
-                 Reflect.isEnumType(cls))) {
-                var keySerializer = selectForClass(typeArgs[0]);
-                var valSerializer = selectForType(typeArgs[1]);
-                return new MapSerializer<>(keySerializer, valSerializer, outputNulls, inputNulls);
+            if (typeArgs[0].getType() instanceof Class<?>) {
+                Class<?> cls = (Class<?>) typeArgs[0].getType();
+                if (DEFAULT_SERIALIZERS.containsKey(cls) || Reflect.isEnumType(cls)) {
+                    Serializer<?, ?> keySerializer = selectForClass(typeArgs[0]);
+                    Serializer<?, ?> valSerializer = selectForType(typeArgs[1]);
+                    return new MapSerializer<>(keySerializer, valSerializer, outputNulls, inputNulls);
+                }
             }
             String msg = baseExceptionMessage(type) +
                          "Map keys can only be of simple or enum type.";
@@ -266,6 +300,6 @@ final class SerializerSelector {
     }
 
     private String baseExceptionMessage(Type type) {
-        return "Cannot select serializer for type '%s'.\n".formatted(type);
+        return String.format("Cannot select serializer for type '%s'.\n", type);
     }
 }

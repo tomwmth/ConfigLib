@@ -23,10 +23,23 @@ import java.util.List;
  *     {@code @Comment({"Hello", "World"})}
  *     int fn2;
  * }
- *  </pre>
- *
- * @param comments
- * @param elementNames
+ * </pre>
  */
-record CommentNode(List<String> comments, List<String> elementNames) {}
+class CommentNode {
+    private final List<String> comments;
+    private final List<String> elementNames;
+
+    public CommentNode(List<String> comments, List<String> elementNames) {
+        this.comments = comments;
+        this.elementNames = elementNames;
+    }
+
+    public List<String> comments() {
+        return this.comments;
+    }
+
+    public List<String> elementNames() {
+        return this.elementNames;
+    }
+}
 

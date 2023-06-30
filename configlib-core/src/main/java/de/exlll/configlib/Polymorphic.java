@@ -59,7 +59,7 @@ public @interface Polymorphic {
      * name of a configuration element.
      *
      * @return name of the property that holds the type information
-     * @see String#isBlank()
+     * @see String#isEmpty()
      */
     String property() default DEFAULT_PROPERTY;
 }

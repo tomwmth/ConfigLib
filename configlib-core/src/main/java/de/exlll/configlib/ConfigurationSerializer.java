@@ -5,6 +5,7 @@ import de.exlll.configlib.ConfigurationElements.FieldElement;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 final class ConfigurationSerializer<T> extends TypeSerializer<T, FieldElement> {
     ConfigurationSerializer(Class<T> configurationType, ConfigurationProperties properties) {
@@ -15,14 +16,14 @@ final class ConfigurationSerializer<T> extends TypeSerializer<T, FieldElement> {
     public T deserialize(Map<?, ?> serializedConfiguration) {
         final T result = Reflect.callNoParamConstructor(type);
 
-        for (final var element : elements()) {
-            final var formattedName = formatter.format(element.name());
+        for (final FieldElement element : elements()) {
+            final String formattedName = formatter.format(element.name());
 
             if (!serializedConfiguration.containsKey(formattedName))
                 continue;
 
-            final var serializedValue = serializedConfiguration.get(formattedName);
-            final var field = element.element();
+            final Object serializedValue = serializedConfiguration.get(formattedName);
+            final Field field = element.element();
 
             if ((serializedValue == null) && properties.inputNulls()) {
                 requireNonPrimitiveFieldType(field);
@@ -47,8 +48,8 @@ final class ConfigurationSerializer<T> extends TypeSerializer<T, FieldElement> {
 
     @Override
     protected String baseDeserializeExceptionMessage(FieldElement element, Object value) {
-        return "Deserialization of value '%s' with type '%s' for field '%s' failed."
-                .formatted(value, value.getClass(), element.element());
+        return String.format("Deserialization of value '%s' with type '%s' for field '%s' failed.",
+                        value, value.getClass(), element.element());
     }
 
     @Override
@@ -56,7 +57,7 @@ final class ConfigurationSerializer<T> extends TypeSerializer<T, FieldElement> {
         return FieldExtractors.CONFIGURATION.extract(type)
                 .filter(properties.getFieldFilter())
                 .map(FieldElement::new)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -66,8 +67,8 @@ final class ConfigurationSerializer<T> extends TypeSerializer<T, FieldElement> {
 
     private static void requireNonPrimitiveFieldType(Field field) {
         if (field.getType().isPrimitive()) {
-            String msg = ("Cannot set field '%s' to null value. Primitive types " +
-                          "cannot be assigned null.").formatted(field);
+            String msg = String.format("Cannot set field '%s' to null value. Primitive types cannot be assigned null.",
+                    field);
             throw new ConfigurationException(msg);
         }
     }

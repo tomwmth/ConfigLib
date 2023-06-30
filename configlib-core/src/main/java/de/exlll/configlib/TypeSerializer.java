@@ -7,9 +7,7 @@ import java.util.stream.Collectors;
 
 import static de.exlll.configlib.Validator.requireNonNull;
 
-sealed abstract class TypeSerializer<T, E extends ConfigurationElement<?>>
-        implements Serializer<T, Map<?, ?>>
-        permits ConfigurationSerializer, RecordSerializer {
+abstract class TypeSerializer<T, E extends ConfigurationElement<?>> implements Serializer<T, Map<?, ?>> {
     protected final Class<T> type;
     protected final ConfigurationProperties properties;
     protected final NameFormatter formatter;
@@ -27,13 +25,11 @@ sealed abstract class TypeSerializer<T, E extends ConfigurationElement<?>>
             Class<T> type,
             ConfigurationProperties properties
     ) {
-        return type.isRecord()
-                ? new RecordSerializer<>(type, properties)
-                : new ConfigurationSerializer<>(type, properties);
+        return new ConfigurationSerializer<>(type, properties);
     }
 
     Map<String, Serializer<?, ?>> buildSerializerMap() {
-        final var selector = new SerializerSelector(properties);
+        final SerializerSelector selector = new SerializerSelector(properties);
         try {
             return elements().stream().collect(Collectors.toMap(
                     ConfigurationElement::name,
@@ -67,7 +63,7 @@ sealed abstract class TypeSerializer<T, E extends ConfigurationElement<?>>
         // The following cast won't cause a ClassCastException because the serializers
         // are selected based on the element type.
         @SuppressWarnings("unchecked")
-        final var serializer = (Serializer<Object, Object>)
+        final Serializer<Object, Object> serializer = (Serializer<Object, Object>)
                 serializers.get(element.name());
         return (value != null) ? serializer.serialize(value) : null;
     }
@@ -76,7 +72,7 @@ sealed abstract class TypeSerializer<T, E extends ConfigurationElement<?>>
         // This unchecked cast leads to an exception if the type of the object which
         // is deserialized is not a subtype of the type the deserializer expects.
         @SuppressWarnings("unchecked")
-        final var serializer = (Serializer<Object, Object>)
+        final Serializer<Object, Object> serializer = (Serializer<Object, Object>)
                 serializers.get(element.name());
 
         final Object deserialized;

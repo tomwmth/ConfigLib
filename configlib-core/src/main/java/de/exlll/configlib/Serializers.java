@@ -7,6 +7,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -300,7 +301,7 @@ final class Serializers {
 
         @Override
         public Path deserialize(String element) {
-            return Path.of(element);
+            return Paths.get(element);
         }
     }
 
@@ -454,10 +455,10 @@ final class Serializers {
             for (final Map.Entry<S1, S2> entry : element.entrySet()) {
                 if (!outputNulls && isEntryNull(entry))
                     continue;
-                var s1key = entry.getKey();
-                var s2val = entry.getValue();
-                var t1key = (s1key == null) ? null : keySerializer.serialize(s1key);
-                var t2val = (s2val == null) ? null : valSerializer.serialize(s2val);
+                S1 s1key = entry.getKey();
+                S2 s2val = entry.getValue();
+                T1 t1key = (s1key == null) ? null : keySerializer.serialize(s1key);
+                T2 t2val = (s2val == null) ? null : valSerializer.serialize(s2val);
                 result.put(t1key, t2val);
             }
             return result;
@@ -470,10 +471,10 @@ final class Serializers {
             for (final Map.Entry<T1, T2> entry : element.entrySet()) {
                 if (!inputNulls && isEntryNull(entry))
                     continue;
-                var t1key = entry.getKey();
-                var t2val = entry.getValue();
-                var s1key = (t1key == null) ? null : keySerializer.deserialize(t1key);
-                var s2val = (t2val == null) ? null : valSerializer.deserialize(t2val);
+                T1 t1key = entry.getKey();
+                T2 t2val = entry.getValue();
+                S1 s1key = (t1key == null) ? null : keySerializer.deserialize(t1key);
+                S2 s2val = (t2val == null) ? null : valSerializer.deserialize(t2val);
                 result.put(s1key, s2val);
             }
             return result;
@@ -515,7 +516,7 @@ final class Serializers {
             final Stream<T2> stream = outputNulls
                     ? Arrays.stream(element).map(s -> s == null ? null : serializer.serialize(s))
                     : Arrays.stream(element).filter(Objects::nonNull).map(serializer::serialize);
-            return stream.toList();
+            return stream.collect(Collectors.toList());
         }
 
         @Override
@@ -543,7 +544,7 @@ final class Serializers {
         @Override
         public List<Boolean> serialize(Object element) {
             final boolean[] array = (boolean[]) element;
-            return IntStream.range(0, array.length).mapToObj(i -> array[i]).toList();
+            return IntStream.range(0, array.length).mapToObj(i -> array[i]).collect(Collectors.toList());
         }
 
         @Override
@@ -564,7 +565,7 @@ final class Serializers {
             final char[] array = (char[]) element;
             return IntStream.range(0, array.length)
                     .mapToObj(i -> serializer.serialize(array[i]))
-                    .toList();
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -587,7 +588,7 @@ final class Serializers {
             final byte[] array = (byte[]) element;
             return IntStream.range(0, array.length).
                     mapToObj(i -> serializer.serialize(array[i]))
-                    .toList();
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -610,7 +611,7 @@ final class Serializers {
             final short[] array = (short[]) element;
             return IntStream.range(0, array.length)
                     .mapToObj(i -> serializer.serialize(array[i]))
-                    .toList();
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -631,7 +632,7 @@ final class Serializers {
         @Override
         public List<Number> serialize(Object element) {
             final int[] array = (int[]) element;
-            return Arrays.stream(array).mapToObj(serializer::serialize).toList();
+            return Arrays.stream(array).mapToObj(serializer::serialize).collect(Collectors.toList());
         }
 
         @Override
@@ -652,7 +653,7 @@ final class Serializers {
         @Override
         public List<Number> serialize(Object element) {
             final long[] array = (long[]) element;
-            return Arrays.stream(array).mapToObj(serializer::serialize).toList();
+            return Arrays.stream(array).mapToObj(serializer::serialize).collect(Collectors.toList());
         }
 
         @Override
@@ -675,7 +676,7 @@ final class Serializers {
             final float[] array = (float[]) element;
             return IntStream.range(0, array.length)
                     .mapToObj(i -> serializer.serialize(array[i]))
-                    .toList();
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -696,7 +697,7 @@ final class Serializers {
         @Override
         public List<Number> serialize(Object element) {
             final double[] array = (double[]) element;
-            return Arrays.stream(array).mapToObj(serializer::serialize).toList();
+            return Arrays.stream(array).mapToObj(serializer::serialize).collect(Collectors.toList());
         }
 
         @Override

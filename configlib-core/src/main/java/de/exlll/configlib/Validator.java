@@ -27,15 +27,6 @@ final class Validator {
         return cls;
     }
 
-    static <T> Class<T> requireRecord(Class<T> cls) {
-        requireNonNull(cls, "type");
-        if (!cls.isRecord()) {
-            String msg = "Class '" + cls.getSimpleName() + "' must be a record.";
-            throw new ConfigurationException(msg);
-        }
-        return cls;
-    }
-
     static <T> Class<T> requireConfigurationType(Class<T> type) {
         requireNonNull(type, "type");
         if (!Reflect.isConfigurationType(type)) {

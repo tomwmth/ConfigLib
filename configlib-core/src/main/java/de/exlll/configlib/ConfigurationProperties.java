@@ -31,8 +31,8 @@ class ConfigurationProperties {
      * @throws NullPointerException if the builder or any of its values is null
      */
     protected ConfigurationProperties(Builder<?> builder) {
-        this.serializersByType = Map.copyOf(builder.serializersByType);
-        this.serializerFactoriesByType = Map.copyOf(builder.serializerFactoriesByType);
+        this.serializersByType = new HashMap<>(builder.serializersByType);
+        this.serializerFactoriesByType = new HashMap<>(builder.serializerFactoriesByType);
         this.serializersByCondition = Collections.unmodifiableMap(new LinkedHashMap<>(
                 builder.serializersByCondition
         ));

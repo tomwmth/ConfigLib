@@ -9,8 +9,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static de.exlll.configlib.Validator.requireRecord;
-
 final class Reflect {
     private static final Map<Class<?>, Object> DEFAULT_VALUES = initDefaultValues();
 
@@ -45,18 +43,18 @@ final class Reflect {
             constructor.setAccessible(true);
             return constructor.newInstance(arguments);
         } catch (NoSuchMethodException e) {
-            String msg = "Type '%s' doesn't have a constructor with parameters: %s."
-                    .formatted(cls.getSimpleName(), argumentTypeNamesJoined(argumentTypes));
+            String msg = String.format("Type '%s' doesn't have a constructor with parameters: %s.",
+                    cls.getSimpleName(), argumentTypeNamesJoined(argumentTypes));
             throw new RuntimeException(msg, e);
         } catch (IllegalAccessException e) {
             // cannot happen because we set the constructor to be accessible.
             throw new RuntimeException(e);
         } catch (InstantiationException e) {
-            String msg = "Type '%s' is not instantiable.".formatted(cls.getSimpleName());
+            String msg = String.format("Type '%s' is not instantiable.", cls.getSimpleName());
             throw new RuntimeException(msg, e);
         } catch (InvocationTargetException e) {
-            String msg = "Constructor of type '%s' with parameters '%s' threw an exception."
-                    .formatted(cls.getSimpleName(), argumentTypeNamesJoined(argumentTypes));
+            String msg = String.format("Constructor of type '%s' with parameters '%s' threw an exception.",
+                    cls.getSimpleName(), argumentTypeNamesJoined(argumentTypes));
             throw new RuntimeException(msg, e);
         }
     }
@@ -79,65 +77,20 @@ final class Reflect {
             constructor.setAccessible(true);
             return constructor.newInstance();
         } catch (NoSuchMethodException e) {
-            String msg = "Type '%s' doesn't have a no-args constructor."
-                    .formatted(cls.getSimpleName());
+            String msg = String.format("Type '%s' doesn't have a no-args constructor.", cls.getSimpleName());
             throw new RuntimeException(msg, e);
         } catch (IllegalAccessException e) {
             /* This exception should not be thrown because
              * we set the constructor to be accessible. */
-            String msg = "No-args constructor of type '%s' not accessible."
-                    .formatted(cls.getSimpleName());
+            String msg = String.format("No-args constructor of type '%s' not accessible.", cls.getSimpleName());
             throw new RuntimeException(msg, e);
         } catch (InstantiationException e) {
-            String msg = "Type '%s' is not instantiable.".formatted(cls.getSimpleName());
+            String msg = String.format("Type %s is not instantiable.", cls.getSimpleName());
             throw new RuntimeException(msg, e);
         } catch (InvocationTargetException e) {
-            String msg = "No-args constructor of type '%s' threw an exception."
-                    .formatted(cls.getSimpleName());
+            String msg = String.format("No-args constructor of type '%s' threw an exception.", cls.getSimpleName());
             throw new RuntimeException(msg, e);
         }
-    }
-
-    // We could use <R extends Record> as a bound here and for the other methods below
-    // but that would require casts elsewhere.
-    static <R> R callCanonicalConstructor(Class<R> recordType, Object... constructorArguments) {
-        try {
-            Constructor<R> constructor = getCanonicalConstructor(requireRecord(recordType));
-            constructor.setAccessible(true);
-            return constructor.newInstance(constructorArguments);
-        } catch (NoSuchMethodException e) {
-            // cannot happen because we select the constructor based on the component types
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            // cannot happen because we set the constructor to be accessible.
-            throw new RuntimeException(e);
-        } catch (InstantiationException e) {
-            // cannot happen because records are instantiable
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            String msg = "The canonical constructor of record type '%s' threw an exception."
-                    .formatted(recordType.getSimpleName());
-            throw new RuntimeException(msg, e);
-        }
-    }
-
-    static <R> R callCanonicalConstructorWithDefaultValues(Class<R> recordType) {
-        final Object[] args = Arrays.stream(recordParameterTypes(requireRecord(recordType)))
-                .map(Reflect::getDefaultValue)
-                .toArray(Object[]::new);
-        return Reflect.callCanonicalConstructor(recordType, args);
-    }
-
-    static <R> Constructor<R> getCanonicalConstructor(Class<R> recordType)
-            throws NoSuchMethodException {
-        Class<?>[] parameterTypes = recordParameterTypes(requireRecord(recordType));
-        return recordType.getDeclaredConstructor(parameterTypes);
-    }
-
-    private static <R> Class<?>[] recordParameterTypes(Class<R> recordType) {
-        return Arrays.stream(recordType.getRecordComponents())
-                .map(RecordComponent::getType)
-                .toArray(Class<?>[]::new);
     }
 
     static <T> T[] newArray(Class<T> componentType, int length) {
@@ -158,24 +111,7 @@ final class Reflect {
             return field.get(instance);
         } catch (IllegalAccessException e) {
             /* This exception should not be thrown because we set the field to be accessible. */
-            String msg = "Illegal access of field '%s' on object %s.".formatted(field, instance);
-            throw new RuntimeException(msg, e);
-        }
-    }
-
-    static Object getValue(RecordComponent component, Object recordInstance) {
-        final Method accessor = component.getAccessor();
-        try {
-            accessor.setAccessible(true);
-            return accessor.invoke(recordInstance);
-        } catch (IllegalAccessException e) {
-            /* Should not be thrown because we set the method to be accessible. */
-            String msg = "Illegal access of method '%s' on record '%s'."
-                    .formatted(accessor, recordInstance);
-            throw new RuntimeException(msg, e);
-        } catch (InvocationTargetException e) {
-            String msg = "Invocation of method '%s' on record '%s' failed."
-                    .formatted(accessor, recordInstance);
+            String msg = String.format("Illegal access of field '%s' on object %s.", field, instance);
             throw new RuntimeException(msg, e);
         }
     }
@@ -186,7 +122,7 @@ final class Reflect {
             field.set(instance, value);
         } catch (IllegalAccessException e) {
             /* This exception should not be thrown because we set the field to be accessible. */
-            String msg = "Illegal access of field '%s' on object %s.".formatted(field, instance);
+            String msg = String.format("Illegal access of field '%s' on object %s.", field, instance);
             throw new RuntimeException(msg, e);
         }
     }
@@ -228,7 +164,8 @@ final class Reflect {
     }
 
     static boolean isConfigurationType(Class<?> type) {
-        return type.isRecord() || (type.getAnnotation(Configuration.class) != null);
+        return type.getAnnotation(Configuration.class) != null;
+//        return type.isRecord() || (type.getAnnotation(Configuration.class) != null);
     }
 
     static boolean isIgnored(Field field) {
