@@ -10,6 +10,7 @@ import org.snakeyaml.engine.v2.nodes.Node;
 import org.snakeyaml.engine.v2.nodes.Tag;
 import org.snakeyaml.engine.v2.representer.StandardRepresenter;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -52,9 +53,9 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
         requireNonNull(configuration, "configuration");
         requireNonNull(configurationFile, "configuration file");
         tryCreateParentDirectories(configurationFile);
-        var extractedCommentNodes = extractor.extractCommentNodes(configuration);
-        var yamlFileWriter = new YamlFileWriter(configurationFile, properties);
-        var dumpedYaml = tryDump(configuration);
+        Queue<CommentNode> extractedCommentNodes = extractor.extractCommentNodes(configuration);
+        YamlFileWriter yamlFileWriter = new YamlFileWriter(configurationFile, properties);
+        String dumpedYaml = tryDump(configuration);
         yamlFileWriter.writeYaml(dumpedYaml, extractedCommentNodes);
     }
 
@@ -83,13 +84,13 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
     @Override
     public T load(Path configurationFile) {
         requireNonNull(configurationFile, "configuration file");
-        try (var reader = Files.newBufferedReader(configurationFile)) {
-            var yaml = YAML_LOADER.loadFromReader(reader);
-            var conf = requireYamlMap(yaml, configurationFile);
+        try (BufferedReader reader = Files.newBufferedReader(configurationFile)) {
+            Object yaml = YAML_LOADER.loadFromReader(reader);
+            Map<?, ?> conf = requireYamlMap(yaml, configurationFile);
             return serializer.deserialize(conf);
         } catch (YamlEngineException e) {
             String msg = "The configuration file at %s does not contain valid YAML.";
-            throw new ConfigurationException(msg.formatted(configurationFile), e);
+            throw new ConfigurationException(String.format(msg, configurationFile), e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -98,14 +99,14 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
     private Map<?, ?> requireYamlMap(Object yaml, Path configurationFile) {
         if (yaml == null) {
             String msg = "The configuration file at %s is empty or only contains null.";
-            throw new ConfigurationException(msg.formatted(configurationFile));
+            throw new ConfigurationException(String.format(msg, configurationFile));
         }
 
         if (!(yaml instanceof Map<?, ?>)) {
             String msg = "The contents of the YAML file at %s do not represent a configuration. " +
                          "A valid configuration file contains a YAML map but instead a " +
                          "'" + yaml.getClass() + "' was found.";
-            throw new ConfigurationException(msg.formatted(configurationFile));
+            throw new ConfigurationException(String.format(msg, configurationFile));
         }
 
         return (Map<?, ?>) yaml;
@@ -183,7 +184,10 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
         }
 
         private void writeComments(List<String> comments, int indentLevel) throws IOException {
-            String indent = "  ".repeat(indentLevel);
+            StringBuilder indent = new StringBuilder();
+            for (int i = 0; i < indentLevel; i++) {
+                indent.append("  ");
+            }
             for (String comment : comments) {
                 if (comment.isEmpty()) {
                     writer.newLine();
@@ -221,8 +225,8 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
              * of a child. That order ultimately represents the order in which the
              * YAML file is structured.
              */
-            var node = nodes.poll();
-            var currentIndentLevel = 0;
+            CommentNode node = nodes.poll();
+            int currentIndentLevel = 0;
 
             for (final String line : yaml.split("\n")) {
                 if (node == null) {
@@ -230,16 +234,19 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
                     continue;
                 }
 
-                final var elementNames = node.elementNames();
-                final var indent = "  ".repeat(currentIndentLevel);
+                final List<String> elementNames = node.elementNames();
+                final StringBuilder indent = new StringBuilder();
+                for (int i = 0; i < currentIndentLevel; i++) {
+                    indent.append("  ");
+                }
 
-                final var lineStart = indent + elementNames.get(currentIndentLevel) + ":";
+                final String lineStart = indent + elementNames.get(currentIndentLevel) + ":";
                 if (!line.startsWith(lineStart)) {
                     writeLine(line);
                     continue;
                 }
 
-                final var commentIndentLevel = elementNames.size() - 1;
+                final int commentIndentLevel = elementNames.size() - 1;
                 if (currentIndentLevel++ == commentIndentLevel) {
                     writeComments(node.comments(), commentIndentLevel);
                     if ((node = nodes.poll()) != null) {

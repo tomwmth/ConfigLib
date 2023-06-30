@@ -24,7 +24,7 @@ public final class YamlConfigurations {
      * @see YamlConfigurationStore#load(Path)
      */
     public static <T> T load(Path configurationFile, Class<T> configurationType) {
-        final var properties = YamlConfigurationProperties.newBuilder().build();
+        final YamlConfigurationProperties properties = YamlConfigurationProperties.newBuilder().build();
         return load(configurationFile, configurationType, properties);
     }
 
@@ -49,7 +49,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             Consumer<YamlConfigurationProperties.Builder<?>> propertiesConfigurer
     ) {
-        final var builder = YamlConfigurationProperties.newBuilder();
+        final YamlConfigurationProperties.Builder<?> builder = YamlConfigurationProperties.newBuilder();
         propertiesConfigurer.accept(builder);
         return load(configurationFile, configurationType, builder.build());
     }
@@ -74,7 +74,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             YamlConfigurationProperties properties
     ) {
-        final var store = new YamlConfigurationStore<>(configurationType, properties);
+        final YamlConfigurationStore<T> store = new YamlConfigurationStore<>(configurationType, properties);
         return store.load(configurationFile);
     }
 
@@ -94,7 +94,7 @@ public final class YamlConfigurations {
      * @see YamlConfigurationStore#update(Path)
      */
     public static <T> T update(Path configurationFile, Class<T> configurationType) {
-        final var properties = YamlConfigurationProperties.newBuilder().build();
+        final YamlConfigurationProperties properties = YamlConfigurationProperties.newBuilder().build();
         return update(configurationFile, configurationType, properties);
     }
 
@@ -120,7 +120,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             Consumer<YamlConfigurationProperties.Builder<?>> propertiesConfigurer
     ) {
-        final var builder = YamlConfigurationProperties.newBuilder();
+        final YamlConfigurationProperties.Builder<?> builder = YamlConfigurationProperties.newBuilder();
         propertiesConfigurer.accept(builder);
         return update(configurationFile, configurationType, builder.build());
     }
@@ -146,7 +146,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             YamlConfigurationProperties properties
     ) {
-        final var store = new YamlConfigurationStore<>(configurationType, properties);
+        final YamlConfigurationStore<T> store = new YamlConfigurationStore<>(configurationType, properties);
         return store.update(configurationFile);
     }
 
@@ -169,7 +169,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             T configuration
     ) {
-        final var properties = YamlConfigurationProperties.newBuilder().build();
+        final YamlConfigurationProperties properties = YamlConfigurationProperties.newBuilder().build();
         save(configurationFile, configurationType, configuration, properties);
     }
 
@@ -195,7 +195,7 @@ public final class YamlConfigurations {
             T configuration,
             Consumer<YamlConfigurationProperties.Builder<?>> propertiesConfigurer
     ) {
-        final var builder = YamlConfigurationProperties.newBuilder();
+        final YamlConfigurationProperties.Builder<?> builder = YamlConfigurationProperties.newBuilder();
         propertiesConfigurer.accept(builder);
         save(configurationFile, configurationType, configuration, builder.build());
     }
@@ -221,7 +221,7 @@ public final class YamlConfigurations {
             T configuration,
             YamlConfigurationProperties properties
     ) {
-        final var store = new YamlConfigurationStore<>(configurationType, properties);
+        final YamlConfigurationStore<T> store = new YamlConfigurationStore<>(configurationType, properties);
         store.save(configuration, configurationFile);
     }
 }
