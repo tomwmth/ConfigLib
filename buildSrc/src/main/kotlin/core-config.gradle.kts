@@ -1,6 +1,5 @@
 plugins {
     `java-library`
-    `java-test-fixtures`
     `maven-publish`
     idea
 }
@@ -22,15 +21,7 @@ repositories {
 }
 
 dependencies {
-    testFixturesApi("org.junit.jupiter:junit-jupiter-api:5.9.2")
-    testFixturesApi("org.junit.jupiter:junit-jupiter-params:5.9.2")
-    testFixturesApi("org.junit.jupiter:junit-jupiter-engine:5.9.2")
-    testFixturesApi("org.junit.platform:junit-platform-runner:1.9.2")
-    testFixturesApi("org.junit.platform:junit-platform-suite-api:1.9.2")
-    testFixturesApi("org.mockito:mockito-inline:5.1.1")
-    testFixturesApi("org.mockito:mockito-junit-jupiter:5.1.1")
-    testFixturesApi("org.hamcrest:hamcrest-all:1.3")
-    testFixturesApi("com.google.jimfs:jimfs:1.2")
+
 }
 
 publishing {
@@ -60,12 +51,4 @@ idea {
         isDownloadJavadoc = true
         isDownloadSources = true
     }
-}
-
-val javaComponent = components["java"] as AdhocComponentWithVariants
-javaComponent.withVariantsFromConfiguration(configurations["testFixturesApiElements"]) {
-    skip()
-}
-javaComponent.withVariantsFromConfiguration(configurations["testFixturesRuntimeElements"]) {
-    skip()
 }
