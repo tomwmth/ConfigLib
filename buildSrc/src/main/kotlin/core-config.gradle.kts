@@ -12,10 +12,6 @@ java {
     withSourcesJar()
 }
 
-tasks.getByName<Test>("test") {
-    useJUnitPlatform()
-}
-
 repositories {
     mavenCentral()
 }
