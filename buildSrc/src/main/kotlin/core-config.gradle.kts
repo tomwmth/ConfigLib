@@ -32,7 +32,7 @@ publishing {
 
     repositories {
         maven {
-            name = "alpine-cloud"
+            name = "alpine"
             url = uri("https://lib.alpn.cloud/alpine-public")
             credentials {
                 username = System.getenv("ALPINE_MAVEN_NAME")
