@@ -10,12 +10,14 @@ import org.snakeyaml.engine.v2.nodes.Node;
 import org.snakeyaml.engine.v2.nodes.Tag;
 import org.snakeyaml.engine.v2.representer.StandardRepresenter;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Queue;
 
 import static de.exlll.configlib.Validator.requireNonNull;
 
@@ -55,9 +57,9 @@ public final class YamlConfigurationStore<T> implements
     public void write(T configuration, OutputStream outputStream) {
         requireNonNull(configuration, "configuration");
         requireNonNull(outputStream, "output stream");
-        var extractedCommentNodes = extractor.extractCommentNodes(configuration);
-        var yamlFileWriter = new YamlWriter(outputStream, properties);
-        var dumpedYaml = tryDump(configuration);
+        Queue<CommentNode> extractedCommentNodes = extractor.extractCommentNodes(configuration);
+        YamlWriter yamlFileWriter = new YamlWriter(outputStream, properties);
+        String dumpedYaml = tryDump(configuration);
         yamlFileWriter.writeYaml(dumpedYaml, extractedCommentNodes);
     }
 
@@ -66,9 +68,9 @@ public final class YamlConfigurationStore<T> implements
         requireNonNull(configuration, "configuration");
         requireNonNull(configurationFile, "configuration file");
         tryCreateParentDirectories(configurationFile);
-        var extractedCommentNodes = extractor.extractCommentNodes(configuration);
-        var yamlFileWriter = new YamlWriter(configurationFile, properties);
-        var dumpedYaml = tryDump(configuration);
+        Queue<CommentNode> extractedCommentNodes = extractor.extractCommentNodes(configuration);
+        YamlWriter yamlFileWriter = new YamlWriter(configurationFile, properties);
+        String dumpedYaml = tryDump(configuration);
         yamlFileWriter.writeYaml(dumpedYaml, extractedCommentNodes);
     }
 
@@ -98,8 +100,8 @@ public final class YamlConfigurationStore<T> implements
     public T read(InputStream inputStream) {
         requireNonNull(inputStream, "input stream");
         try {
-            var yaml = YAML_LOADER.loadFromInputStream(inputStream);
-            var conf = requireYamlMapForRead(yaml);
+            Object yaml = YAML_LOADER.loadFromInputStream(inputStream);
+            Map<?, ?> conf = requireYamlMapForRead(yaml);
             return serializer.deserialize(conf);
         } catch (YamlEngineException e) {
             String msg = "The input stream does not contain valid YAML.";
@@ -113,26 +115,32 @@ public final class YamlConfigurationStore<T> implements
             throw new ConfigurationException(msg);
         }
 
-        if (!(yaml instanceof Map<?, ?> map)) {
-            String msg = "The contents of the input stream do not represent a configuration. " +
-                         "A valid configuration contains a YAML map but instead a " +
-                         "'" + yaml.getClass() + "' was found.";
+        if (!(yaml instanceof Map<?, ?>)) {
+            String msg = String.format(
+                    "The contents of the input stream do not represent a configuration. " +
+                    "A valid configuration contains a YAML map but instead a " +
+                    "'%s' was found.",
+                    yaml.getClass()
+            );
             throw new ConfigurationException(msg);
         }
 
-        return map;
+        return (Map<?, ?>) yaml;
     }
 
     @Override
     public T load(Path configurationFile) {
         requireNonNull(configurationFile, "configuration file");
-        try (var reader = Files.newBufferedReader(configurationFile, properties.getCharset())) {
-            var yaml = YAML_LOADER.loadFromReader(reader);
-            var conf = requireYamlMapForLoad(yaml, configurationFile);
+        try (BufferedReader reader = Files.newBufferedReader(configurationFile, properties.getCharset())) {
+            Object yaml = YAML_LOADER.loadFromReader(reader);
+            Map<?, ?> conf = requireYamlMapForLoad(yaml, configurationFile);
             return serializer.deserialize(conf);
         } catch (YamlEngineException e) {
-            String msg = "The configuration file at %s does not contain valid YAML.";
-            throw new ConfigurationException(msg.formatted(configurationFile), e);
+            String msg = String.format(
+                    "The configuration file at %s does not contain valid YAML.",
+                    configurationFile
+            );
+            throw new ConfigurationException(msg, e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -140,18 +148,24 @@ public final class YamlConfigurationStore<T> implements
 
     private Map<?, ?> requireYamlMapForLoad(Object yaml, Path configurationFile) {
         if (yaml == null) {
-            String msg = "The configuration file at %s is empty or only contains null.";
-            throw new ConfigurationException(msg.formatted(configurationFile));
+            String msg = String.format(
+                    "The configuration file at %s is empty or only contains null.",
+                    configurationFile
+            );
+            throw new ConfigurationException(msg);
         }
 
-        if (!(yaml instanceof Map<?, ?> map)) {
-            String msg = "The contents of the YAML file at %s do not represent a configuration. " +
-                         "A valid configuration file contains a YAML map but instead a " +
-                         "'" + yaml.getClass() + "' was found.";
-            throw new ConfigurationException(msg.formatted(configurationFile));
+        if (!(yaml instanceof Map<?, ?>)) {
+            String msg = String.format(
+                    "The contents of the YAML file at %s do not represent a configuration. " +
+                    "A valid configuration file contains a YAML map but instead a " +
+                    "'%s' was found.",
+                    yaml.getClass(), configurationFile
+            );
+            throw new ConfigurationException(msg);
         }
 
-        return map;
+        return (Map<?, ?>) yaml;
     }
 
     @Override

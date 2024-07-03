@@ -8,6 +8,6 @@ repositories {
 }
 
 dependencies {
-    compileOnly("com.velocitypowered:velocity-api:3.2.0-SNAPSHOT")
-    annotationProcessor("com.velocitypowered:velocity-api:3.2.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:3.1.1")
+    annotationProcessor("com.velocitypowered:velocity-api:3.1.1")
 }

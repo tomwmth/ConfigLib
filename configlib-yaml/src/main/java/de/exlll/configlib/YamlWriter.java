@@ -69,7 +69,7 @@ final class YamlWriter {
     }
 
     private void writeComments(List<String> comments, int indentLevel) throws IOException {
-        String indent = "  ".repeat(indentLevel);
+        String indent = repeat("  ", indentLevel);
         for (String comment : comments) {
             if (comment.isEmpty()) {
                 writer.newLine();
@@ -107,8 +107,8 @@ final class YamlWriter {
          * of a child. That order ultimately represents the order in which the
          * YAML file is structured.
          */
-        var node = nodes.poll();
-        var currentIndentLevel = 0;
+        CommentNode node = nodes.poll();
+        int currentIndentLevel = 0;
 
         for (final String line : yaml.split("\n")) {
             if (node == null) {
@@ -116,16 +116,16 @@ final class YamlWriter {
                 continue;
             }
 
-            final var elementNames = node.elementNames();
-            final var indent = "  ".repeat(currentIndentLevel);
+            final List<String> elementNames = node.elementNames();
+            final String indent = repeat("  ", currentIndentLevel);
 
-            final var lineStart = indent + elementNames.get(currentIndentLevel) + ":";
+            final String lineStart = indent + elementNames.get(currentIndentLevel) + ":";
             if (!line.startsWith(lineStart)) {
                 writeLine(line);
                 continue;
             }
 
-            final var commentIndentLevel = elementNames.size() - 1;
+            final int commentIndentLevel = elementNames.size() - 1;
             if (currentIndentLevel++ == commentIndentLevel) {
                 writeComments(node.comments(), commentIndentLevel);
                 if ((node = nodes.poll()) != null) {
@@ -148,5 +148,13 @@ final class YamlWriter {
             else return result;
         }
         return result;
+    }
+
+    private static String repeat(String value, int repeat) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < repeat; i++) {
+            builder.append(value);
+        }
+        return builder.toString();
     }
 }

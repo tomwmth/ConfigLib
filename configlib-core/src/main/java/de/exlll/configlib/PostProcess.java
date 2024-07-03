@@ -24,7 +24,7 @@ import java.lang.annotation.Target;
  * @see ConfigurationElementFilter#byPostProcessKey(String)
  * @see ConfigurationProperties.Builder#addPostProcessor
  */
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
+@Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PostProcess {
     /**

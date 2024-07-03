@@ -95,7 +95,7 @@ public final class YamlConfigurations {
      * @see YamlConfigurationStore#read(InputStream)
      */
     public static <T> T read(InputStream inputStream, Class<T> configurationType) {
-        final var properties = YamlConfigurationProperties.newBuilder().build();
+        final YamlConfigurationProperties properties = YamlConfigurationProperties.newBuilder().build();
         return read(inputStream, configurationType, properties);
     }
 
@@ -119,7 +119,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             Consumer<YamlConfigurationProperties.Builder<?>> propertiesConfigurer
     ) {
-        final var builder = YamlConfigurationProperties.newBuilder();
+        final YamlConfigurationProperties.Builder<?> builder = YamlConfigurationProperties.newBuilder();
         propertiesConfigurer.accept(builder);
         return read(inputStream, configurationType, builder.build());
     }
@@ -143,7 +143,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             YamlConfigurationProperties properties
     ) {
-        final var store = new YamlConfigurationStore<>(configurationType, properties);
+        final YamlConfigurationStore<T> store = new YamlConfigurationStore<>(configurationType, properties);
         return store.read(inputStream);
     }
 
@@ -313,7 +313,7 @@ public final class YamlConfigurations {
             Class<T> configurationType,
             T configuration
     ) {
-        final var properties = YamlConfigurationProperties.newBuilder().build();
+        final YamlConfigurationProperties properties = YamlConfigurationProperties.newBuilder().build();
         write(outputStream, configurationType, configuration, properties);
     }
 
@@ -339,7 +339,7 @@ public final class YamlConfigurations {
             T configuration,
             Consumer<YamlConfigurationProperties.Builder<?>> propertiesConfigurer
     ) {
-        final var builder = YamlConfigurationProperties.newBuilder();
+        final YamlConfigurationProperties.Builder<?> builder = YamlConfigurationProperties.newBuilder();
         propertiesConfigurer.accept(builder);
         write(outputStream, configurationType, configuration, builder.build());
     }
@@ -365,7 +365,7 @@ public final class YamlConfigurations {
             T configuration,
             YamlConfigurationProperties properties
     ) {
-        final var store = new YamlConfigurationStore<>(configurationType, properties);
+        final YamlConfigurationStore<T> store = new YamlConfigurationStore<>(configurationType, properties);
         store.write(configuration, outputStream);
     }
 }
