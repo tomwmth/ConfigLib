@@ -10,24 +10,26 @@ import org.snakeyaml.engine.v2.nodes.Node;
 import org.snakeyaml.engine.v2.nodes.Tag;
 import org.snakeyaml.engine.v2.representer.StandardRepresenter;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 import static de.exlll.configlib.Validator.requireNonNull;
 
 /**
- * A configuration store that saves and loads configurations as YAML text files.
+ * A configuration store for YAML configurations. This class provides two pairs of methods:
+ * One pair for loading configurations from and saving them as YAML text files, and a second pair
+ * for reading configurations from input streams and writing them to output streams.
  *
  * @param <T> the configuration type
  */
-public final class YamlConfigurationStore<T> implements FileConfigurationStore<T> {
+public final class YamlConfigurationStore<T> implements
+        FileConfigurationStore<T>,
+        IOStreamConfigurationStore<T> {
+
     private static final Dump YAML_DUMPER = newYamlDumper();
     private static final Load YAML_LOADER = newYamlLoader();
     private final YamlConfigurationProperties properties;
@@ -48,14 +50,25 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
         this.extractor = new CommentNodeExtractor(properties);
     }
 
+
+    @Override
+    public void write(T configuration, OutputStream outputStream) {
+        requireNonNull(configuration, "configuration");
+        requireNonNull(outputStream, "output stream");
+        var extractedCommentNodes = extractor.extractCommentNodes(configuration);
+        var yamlFileWriter = new YamlWriter(outputStream, properties);
+        var dumpedYaml = tryDump(configuration);
+        yamlFileWriter.writeYaml(dumpedYaml, extractedCommentNodes);
+    }
+
     @Override
     public void save(T configuration, Path configurationFile) {
         requireNonNull(configuration, "configuration");
         requireNonNull(configurationFile, "configuration file");
         tryCreateParentDirectories(configurationFile);
-        Queue<CommentNode> extractedCommentNodes = extractor.extractCommentNodes(configuration);
-        YamlFileWriter yamlFileWriter = new YamlFileWriter(configurationFile, properties);
-        String dumpedYaml = tryDump(configuration);
+        var extractedCommentNodes = extractor.extractCommentNodes(configuration);
+        var yamlFileWriter = new YamlWriter(configurationFile, properties);
+        var dumpedYaml = tryDump(configuration);
         yamlFileWriter.writeYaml(dumpedYaml, extractedCommentNodes);
     }
 
@@ -82,34 +95,63 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
     }
 
     @Override
+    public T read(InputStream inputStream) {
+        requireNonNull(inputStream, "input stream");
+        try {
+            var yaml = YAML_LOADER.loadFromInputStream(inputStream);
+            var conf = requireYamlMapForRead(yaml);
+            return serializer.deserialize(conf);
+        } catch (YamlEngineException e) {
+            String msg = "The input stream does not contain valid YAML.";
+            throw new ConfigurationException(msg, e);
+        }
+    }
+
+    private Map<?, ?> requireYamlMapForRead(Object yaml) {
+        if (yaml == null) {
+            String msg = "The input stream is empty or only contains null.";
+            throw new ConfigurationException(msg);
+        }
+
+        if (!(yaml instanceof Map<?, ?> map)) {
+            String msg = "The contents of the input stream do not represent a configuration. " +
+                         "A valid configuration contains a YAML map but instead a " +
+                         "'" + yaml.getClass() + "' was found.";
+            throw new ConfigurationException(msg);
+        }
+
+        return map;
+    }
+
+    @Override
     public T load(Path configurationFile) {
         requireNonNull(configurationFile, "configuration file");
-        try (BufferedReader reader = Files.newBufferedReader(configurationFile)) {
-            Object yaml = YAML_LOADER.loadFromReader(reader);
-            Map<?, ?> conf = requireYamlMap(yaml, configurationFile);
+        try (var reader = Files.newBufferedReader(configurationFile, properties.getCharset())) {
+            var yaml = YAML_LOADER.loadFromReader(reader);
+            var conf = requireYamlMapForLoad(yaml, configurationFile);
             return serializer.deserialize(conf);
         } catch (YamlEngineException e) {
             String msg = "The configuration file at %s does not contain valid YAML.";
-            throw new ConfigurationException(String.format(msg, configurationFile), e);
+            throw new ConfigurationException(msg.formatted(configurationFile), e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Map<?, ?> requireYamlMap(Object yaml, Path configurationFile) {
+    private Map<?, ?> requireYamlMapForLoad(Object yaml, Path configurationFile) {
         if (yaml == null) {
             String msg = "The configuration file at %s is empty or only contains null.";
-            throw new ConfigurationException(String.format(msg, configurationFile));
+            throw new ConfigurationException(msg.formatted(configurationFile));
         }
 
-        if (!(yaml instanceof Map<?, ?>)) {
+        if (!(yaml instanceof Map<?, ?> map)) {
             String msg = "The contents of the YAML file at %s do not represent a configuration. " +
                          "A valid configuration file contains a YAML map but instead a " +
                          "'" + yaml.getClass() + "' was found.";
-            throw new ConfigurationException(String.format(msg, configurationFile));
+            throw new ConfigurationException(msg.formatted(configurationFile));
         }
 
-        return (Map<?, ?>) yaml;
+        return map;
     }
 
     @Override
@@ -136,140 +178,6 @@ public final class YamlConfigurationStore<T> implements FileConfigurationStore<T
     static Load newYamlLoader() {
         LoadSettings settings = LoadSettings.builder().build();
         return new Load(settings);
-    }
-
-    /**
-     * A writer that writes YAML to a file.
-     */
-    static final class YamlFileWriter {
-        private final Path configurationFile;
-        private final YamlConfigurationProperties properties;
-        private BufferedWriter writer;
-
-        YamlFileWriter(Path configurationFile, YamlConfigurationProperties properties) {
-            this.configurationFile = requireNonNull(configurationFile, "configuration file");
-            this.properties = requireNonNull(properties, "configuration properties");
-        }
-
-        public void writeYaml(String yaml, Queue<CommentNode> nodes) {
-            try (BufferedWriter writer = Files.newBufferedWriter(configurationFile)) {
-                this.writer = writer;
-                writeHeader();
-                writeContent(yaml, nodes);
-                writeFooter();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                this.writer = null;
-            }
-        }
-
-        private void writeHeader() throws IOException {
-            if (properties.getHeader() != null) {
-                writeAsComment(properties.getHeader());
-                writer.newLine();
-            }
-        }
-
-        private void writeFooter() throws IOException {
-            if (properties.getFooter() != null) {
-                writer.newLine();
-                writeAsComment(properties.getFooter());
-            }
-        }
-
-        private void writeAsComment(String comment) throws IOException {
-            String[] lines = comment.split("\n");
-            writeComments(Arrays.asList(lines), 0);
-        }
-
-        private void writeComments(List<String> comments, int indentLevel) throws IOException {
-            StringBuilder indent = new StringBuilder();
-            for (int i = 0; i < indentLevel; i++) {
-                indent.append("  ");
-            }
-            for (String comment : comments) {
-                if (comment.isEmpty()) {
-                    writer.newLine();
-                    continue;
-                }
-                String line = indent + "# " + comment;
-                writeLine(line);
-            }
-        }
-
-        private void writeLine(String line) throws IOException {
-            writer.write(line);
-            writer.newLine();
-        }
-
-        private void writeContent(String yaml, Queue<CommentNode> nodes) throws IOException {
-            if (nodes.isEmpty()) {
-                writer.write(yaml);
-            } else {
-                writeCommentedYaml(yaml, nodes);
-            }
-        }
-
-        private void writeCommentedYaml(String yaml, Queue<CommentNode> nodes)
-                throws IOException {
-            /*
-             * The following algorithm is necessary since no Java YAML library seems
-             * to properly support comments, at least not the way I want them.
-             *
-             * The algorithm writes YAML line by line and keeps track of the current
-             * context with the help of elementNames lists which come from the nodes in
-             * the 'nodes' queue. The 'nodes' queue contains nodes in the order in
-             * which fields and records components were extracted, which happened in
-             * DFS manner and with fields of a parent class being read before the fields
-             * of a child. That order ultimately represents the order in which the
-             * YAML file is structured.
-             */
-            CommentNode node = nodes.poll();
-            int currentIndentLevel = 0;
-
-            for (final String line : yaml.split("\n")) {
-                if (node == null) {
-                    writeLine(line);
-                    continue;
-                }
-
-                final List<String> elementNames = node.elementNames();
-                final StringBuilder indent = new StringBuilder();
-                for (int i = 0; i < currentIndentLevel; i++) {
-                    indent.append("  ");
-                }
-
-                final String lineStart = indent + elementNames.get(currentIndentLevel) + ":";
-                if (!line.startsWith(lineStart)) {
-                    writeLine(line);
-                    continue;
-                }
-
-                final int commentIndentLevel = elementNames.size() - 1;
-                if (currentIndentLevel++ == commentIndentLevel) {
-                    writeComments(node.comments(), commentIndentLevel);
-                    if ((node = nodes.poll()) != null) {
-                        currentIndentLevel = lengthCommonPrefix(node.elementNames(), elementNames);
-                    }
-                }
-
-                writeLine(line);
-            }
-        }
-
-        static int lengthCommonPrefix(List<String> l1, List<String> l2) {
-            final int maxLen = Math.min(l1.size(), l2.size());
-            int result = 0;
-            for (int i = 0; i < maxLen; i++) {
-                String s1 = l1.get(i);
-                String s2 = l2.get(i);
-                if (s1.equals(s2))
-                    result++;
-                else return result;
-            }
-            return result;
-        }
     }
 
     /**
