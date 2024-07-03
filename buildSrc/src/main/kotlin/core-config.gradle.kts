@@ -35,6 +35,8 @@ publishing {
                         "and commenting YAML configuration files."
                 url = "https://github.com/Exlll/ConfigLib"
 
+                groupId = "dev.tomwmth"
+
                 developers {
                     developer {
                         name = "Exlll"
