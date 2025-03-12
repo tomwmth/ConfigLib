@@ -208,9 +208,9 @@ public class ConfigurationProperties {
          * @return this builder
          * @throws NullPointerException if any argument is null
          */
-        final B addSerializerByCondition(
+        public final <T> B addSerializerByCondition(
                 Predicate<? super Type> condition,
-                Serializer<?, ?> serializer
+                Serializer<T, ?> serializer
         ) {
             requireNonNull(condition, "condition");
             requireNonNull(serializer, "serializer");
