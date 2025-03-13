@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 import static de.exlll.configlib.Validator.requireNonNull;
 
 final class SerializerSelector {
-    private static final Map<Class<?>, Serializer<?, ?>> DEFAULT_SERIALIZERS = new HashMap<Class<?>, Serializer<?, ?>>() {{
+    static final Map<Class<?>, Serializer<?, ?>> DEFAULT_SERIALIZERS = new HashMap<Class<?>, Serializer<?, ?>>() {{
         put(boolean.class, new BooleanSerializer());
         put(Boolean.class, new BooleanSerializer());
         put(byte.class, new NumberSerializer(byte.class));
@@ -282,12 +282,9 @@ final class SerializerSelector {
                     : new SetSerializer<>(elementSerializer, outputNulls, inputNulls);
         } else if (Reflect.isMapType(rawType)) {
             if (typeArgs[0].getType() instanceof Class<?>) {
-                Class<?> cls = (Class<?>) typeArgs[0].getType();
-                if (DEFAULT_SERIALIZERS.containsKey(cls) || Reflect.isEnumType(cls)) {
-                    Serializer<?, ?> keySerializer = selectForClass(typeArgs[0]);
-                    Serializer<?, ?> valSerializer = selectForType(typeArgs[1]);
-                    return new MapSerializer<>(keySerializer, valSerializer, outputNulls, inputNulls);
-                }
+                Serializer<?, ?> keySerializer = selectForType(typeArgs[0]);
+                Serializer<?, ?> valSerializer = selectForType(typeArgs[1]);
+                return new MapSerializer<>(keySerializer, valSerializer, outputNulls, inputNulls);
             }
             String msg = baseExceptionMessage(type) +
                          "Map keys can only be of simple or enum type.";

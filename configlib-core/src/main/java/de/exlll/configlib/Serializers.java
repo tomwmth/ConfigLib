@@ -459,7 +459,14 @@ final class Serializers {
                 S2 s2val = entry.getValue();
                 T1 t1key = (s1key == null) ? null : keySerializer.serialize(s1key);
                 T2 t2val = (s2val == null) ? null : valSerializer.serialize(s2val);
-                result.put(t1key, t2val);
+
+                Class<?> cls = t1key.getClass();
+                if (SerializerSelector.DEFAULT_SERIALIZERS.containsKey(cls) || Enum.class.isAssignableFrom(cls)) {
+                    result.put(t1key, t2val);
+                }
+                else {
+                    throw new RuntimeException("Map key serializers must return a non-null and simple value");
+                }
             }
             return result;
         }
@@ -475,7 +482,13 @@ final class Serializers {
                 T2 t2val = entry.getValue();
                 S1 s1key = (t1key == null) ? null : keySerializer.deserialize(t1key);
                 S2 s2val = (t2val == null) ? null : valSerializer.deserialize(t2val);
-                result.put(s1key, s2val);
+
+                if (s1key != null) {
+                    result.put(s1key, s2val);
+                }
+                else {
+                    throw new RuntimeException("Map key serializers must return a non-null and simple value");
+                }
             }
             return result;
         }
