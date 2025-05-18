@@ -1,10 +1,12 @@
 package de.exlll.configlib;
 
-import org.snakeyaml.engine.v2.api.Dump;
-import org.snakeyaml.engine.v2.api.DumpSettings;
-import org.snakeyaml.engine.v2.api.Load;
-import org.snakeyaml.engine.v2.api.LoadSettings;
+import org.snakeyaml.engine.v2.api.*;
 import org.snakeyaml.engine.v2.common.FlowStyle;
+import org.snakeyaml.engine.v2.constructor.ConstructScalar;
+import org.snakeyaml.engine.v2.constructor.ConstructYamlNull;
+import org.snakeyaml.engine.v2.constructor.StandardConstructor;
+import org.snakeyaml.engine.v2.constructor.json.ConstructYamlJsonBool;
+import org.snakeyaml.engine.v2.constructor.json.ConstructYamlJsonFloat;
 import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
 import org.snakeyaml.engine.v2.nodes.Node;
 import org.snakeyaml.engine.v2.nodes.Tag;
@@ -16,6 +18,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Queue;
 
@@ -35,7 +38,7 @@ public final class YamlConfigurationStore<T> implements
     private static final Dump YAML_DUMPER = newYamlDumper();
     private static final Load YAML_LOADER = newYamlLoader();
     private final YamlConfigurationProperties properties;
-    private final TypeSerializer<T, ?> serializer;
+    private final RootSerializer<T> serializer;
     private final CommentNodeExtractor extractor;
 
     /**
@@ -45,10 +48,25 @@ public final class YamlConfigurationStore<T> implements
      * @param properties        the properties
      * @throws NullPointerException if any argument is null
      */
-    public YamlConfigurationStore(Class<T> configurationType, YamlConfigurationProperties properties) {
+    public YamlConfigurationStore(
+            Class<T> configurationType,
+            YamlConfigurationProperties properties
+    ) {
+        this(configurationType, properties, new Environment.SystemEnvironment());
+    }
+
+    YamlConfigurationStore(
+            Class<T> configurationType,
+            YamlConfigurationProperties properties,
+            Environment environment
+    ) {
         requireNonNull(configurationType, "configuration type");
         this.properties = requireNonNull(properties, "properties");
-        this.serializer = TypeSerializer.newSerializerFor(configurationType, properties);
+        this.serializer = new RootSerializer<>(
+                configurationType,
+                properties,
+                environment
+        );
         this.extractor = new CommentNodeExtractor(properties);
     }
 
@@ -178,7 +196,7 @@ public final class YamlConfigurationStore<T> implements
         }
         T defaultConfiguration = serializer.newDefaultInstance();
         save(defaultConfiguration, configurationFile);
-        return defaultConfiguration;
+        return load(configurationFile);
     }
 
     static Dump newYamlDumper() {
@@ -191,7 +209,7 @@ public final class YamlConfigurationStore<T> implements
 
     static Load newYamlLoader() {
         LoadSettings settings = LoadSettings.builder().build();
-        return new Load(settings);
+        return new Load(settings, new YamlConfigurationConstructor(settings));
     }
 
     /**
@@ -214,6 +232,42 @@ public final class YamlConfigurationStore<T> implements
             Node node = super.representMapping(tag, mapping, flowStyle);
             representedObjects.clear();
             return node;
+        }
+    }
+
+    /**
+     * A custom StandardConstructor that ensures that only valid target types are loaded.
+     */
+    static final class YamlConfigurationConstructor extends StandardConstructor {
+        private final Map<Tag, ConstructNode> tagCtors;
+
+        public YamlConfigurationConstructor(LoadSettings settings) {
+            super(settings);
+            this.tagConstructors.clear();
+
+            this.tagConstructors.put(Tag.NULL, new ConstructYamlNull());
+            this.tagConstructors.put(Tag.BOOL, new ConstructYamlJsonBool());
+            this.tagConstructors.put(Tag.STR, new ConstructYamlStr());
+            this.tagConstructors.put(Tag.SEQ, new ConstructYamlSeq());
+            this.tagConstructors.put(Tag.MAP, new ConstructYamlMap());
+
+            this.tagConstructors.put(Tag.INT, new YamlConfigurationConstructYamlJsonInt());
+            this.tagConstructors.put(Tag.FLOAT, new ConstructYamlJsonFloat());
+
+            this.tagCtors = Collections.unmodifiableMap(this.tagConstructors);
+        }
+
+        Map<Tag, ConstructNode> getTagCtors() {
+            return tagCtors;
+        }
+
+        static final class YamlConfigurationConstructYamlJsonInt extends ConstructScalar {
+
+            @Override
+            public Object construct(Node node) {
+                final String value = constructScalar(node);
+                return Long.valueOf(value);
+            }
         }
     }
 }

@@ -4,5 +4,5 @@ plugins {
 }
 
 dependencies {
-    implementation("org.snakeyaml:snakeyaml-engine:2.9")
+    implementation(libs.snakeyaml)
 }

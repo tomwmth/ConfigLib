@@ -16,10 +16,6 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-
-}
-
 publishing {
     val moduleId = project.name.split("-")[1].lowercase()
     val publicationName = moduleId.replaceFirstChar(Char::titlecase)
@@ -30,18 +26,23 @@ publishing {
 
             pom {
 
-                name = "ConfigLib ${publicationName}"
-                description = "A Minecraft library for saving, loading, updating, " +
-                        "and commenting YAML configuration files."
-                url = "https://github.com/Exlll/ConfigLib"
+                name = "ConfigLib $publicationName"
+                description = "A library for saving, loading and updating configuration files."
+                url = "https://github.com/tomwmth/ConfigLib"
 
-                groupId = "dev.tomwmth"
+                groupId = "dev.tomwmth.configlib"
 
                 developers {
                     developer {
                         name = "Exlll"
                         email = "exlll321@gmail.com"
                         url = "https://github.com/Exlll"
+                    }
+
+                    developer {
+                        name = "tomwmth"
+                        email = "tomwmth@pm.me"
+                        url = "https://github.com/tomwmth"
                     }
                 }
 
@@ -53,9 +54,9 @@ publishing {
                 }
 
                 scm {
-                    connection = "scm:git:git://github.com/Exlll/ConfigLib.git"
-                    developerConnection = "scm:git:ssh://github.com:Exlll/ConfigLib.git"
-                    url = "https://github.com/Exlll/ConfigLib/tree/master"
+                    connection = "scm:git:git://github.com/tomwmth/ConfigLib.git"
+                    developerConnection = "scm:git:ssh://github.com:tomwmth/ConfigLib.git"
+                    url = "https://github.com/tomwmth/ConfigLib/tree/master"
                 }
             }
         }

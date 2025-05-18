@@ -14,6 +14,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import static de.exlll.configlib.Validator.requireNonNull;
+import static de.exlll.configlib.Validator.requireTargetType;
 
 abstract class TypeSerializer<T, E extends ConfigurationElement<?>> implements Serializer<T, Map<?, ?>> {
     protected final Class<T> type;
@@ -70,18 +71,39 @@ abstract class TypeSerializer<T, E extends ConfigurationElement<?>> implements S
     }
 
     protected final Object serializeElement(E element, Object value) {
+        if (value == null) return null;
+
         // This cast can lead to a ClassCastException if an element of type X is
         // serialized by a custom serializer that expects a different type Y.
         @SuppressWarnings("unchecked")
         final Serializer<Object, Object> serializer = (Serializer<Object, Object>) serializers.get(element.name());
         try {
-            return (value != null) ? serializer.serialize(value) : null;
+            final Object serialized = serializer.serialize(value);
+            validateTargetType(element, value, serialized);
+            return serialized;
         } catch (ClassCastException e) {
             String msg = String.format(
                     "Serialization of value '%s' for element '%s' of type '%s' failed.\n" +
                     "The type of the object to be serialized does not match the type " +
                     "the custom serializer of type '%s' expects.",
                     value, element.element(), element.declaringType(), serializer.getClass()
+            );
+            throw new ConfigurationException(msg, e);
+        }
+    }
+
+    private static void validateTargetType(
+            ConfigurationElement<?> element,
+            Object value,
+            Object serialized
+    ) {
+        try {
+            requireTargetType(serialized);
+        } catch (ConfigurationException e) {
+            String msg = String.format(
+                    "Serialization of value '%s' for element '%s' of type '%s' failed. " +
+                    "The serializer produced an invalid target type.",
+                    value, element.element(), element.declaringType()
             );
             throw new ConfigurationException(msg, e);
         }

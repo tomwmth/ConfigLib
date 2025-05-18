@@ -5,7 +5,7 @@ import java.lang.reflect.Modifier;
 
 enum FieldFilters implements FieldFilter {
     /**
-     * The default {@code FieldFilter} that rejects fields that are final, static,
+     * The default {@code FieldFilter} that rejects fields that are static,
      * synthetic, transient, or annotated with {@code @Ignore}.
      */
     DEFAULT {
@@ -19,7 +19,7 @@ enum FieldFilters implements FieldFilter {
                 return false;
 
             int modifiers = field.getModifiers();
-            return !Modifier.isFinal(modifiers) &&
+            return /*!Modifier.isFinal(modifiers) &&*/
                    !Modifier.isStatic(modifiers) &&
                    !Modifier.isTransient(modifiers);
         }

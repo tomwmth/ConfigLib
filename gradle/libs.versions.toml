@@ -1,0 +1,7 @@
+[versions]
+bukkit = "1.8.8-R0.1-SNAPSHOT"
+snakeyaml = "2.9"
+
+[libraries]
+bukkit = { group = "org.bukkit", name = "bukkit", version.ref = "bukkit" }
+snakeyaml = { group = "org.snakeyaml", name = "snakeyaml-engine", version.ref = "snakeyaml" }

@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 final class Reflect {
+    private static final Set<Class<?>> SIMPLE_TARGET_TYPES = initSimpleTargetTypes();
     private static final Map<Class<?>, Object> DEFAULT_VALUES = initDefaultValues();
 
     private Reflect() {}
@@ -29,6 +30,16 @@ final class Reflect {
                         type -> type,
                         type -> Array.get(Array.newInstance(type, 1), 0)
                 ));
+    }
+
+    private static Set<Class<?>> initSimpleTargetTypes() {
+        return Stream.of(
+                        Boolean.class,
+                        Long.class,
+                        Double.class,
+                        String.class
+                )
+                .collect(Collectors.toSet());
     }
 
     static <T> T getDefaultValue(Class<T> clazz) {
@@ -164,8 +175,7 @@ final class Reflect {
     }
 
     static boolean isConfigurationType(Class<?> type) {
-        return type.getAnnotation(Configuration.class) != null;
-//        return type.isRecord() || (type.getAnnotation(Configuration.class) != null);
+        return /*type.isRecord() ||*/ (type.getAnnotation(Configuration.class) != null);
     }
 
     static boolean isIgnored(Field field) {
@@ -187,5 +197,9 @@ final class Reflect {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    static boolean isSimpleTargetType(Class<?> cls) {
+        return SIMPLE_TARGET_TYPES.contains(cls);
     }
 }
