@@ -94,7 +94,7 @@ public final class YamlConfigurationStore<T> implements
 
     private void tryCreateParentDirectories(Path configurationFile) {
         Path parent = configurationFile.getParent();
-        if (!Files.exists(parent) && properties.createParentDirectories()) {
+        if (properties.createParentDirectories() && parent != null && !Files.exists(parent)) {
             try {
                 Files.createDirectories(parent);
             } catch (IOException e) {
